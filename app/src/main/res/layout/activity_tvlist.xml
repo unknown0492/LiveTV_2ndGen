@@ -1,0 +1,65 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/no_icon"
+    android:paddingBottom="0dp"
+    android:paddingLeft="0dp"
+    android:paddingRight="0dp"
+    android:paddingTop="0dp"
+    tools:context="com.excel.livetv.TvList" >
+
+    
+    <ImageView 
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginLeft="25dp"
+        android:layout_marginTop="25dp"
+        android:id="@+id/iv_left_arrow"
+        android:src="@drawable/left_arrow"
+        android:alpha="0.0"
+        />
+    
+    <ListView
+        android:id="@+id/list_main"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_marginLeft="0dp" 
+        android:layout_marginTop="0dp"
+        android:layout_marginBottom="0dp"
+        android:paddingTop="25dp"
+        android:paddingBottom="25dp"
+        android:listSelector="@drawable/main_list_selector"
+        android:divider="@null" 
+        android:scrollbars="none"
+        android:focusable="true">
+    </ListView>
+    
+    <TextView
+        android:id="@+id/tv_category_name"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="300dp"
+        android:gravity="center"
+        android:padding="40dp"
+        android:text="TextView"
+        android:textColor="#ffffff"
+        android:textSize="25dp" />
+    
+	<ListView
+        android:id="@+id/list_sub"
+        android:layout_width="300dp"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="300dp"
+        android:divider="@null"
+        android:layout_marginTop="100dp"
+        android:scrollbars="none"
+        android:focusable="true"
+        android:visibility="visible"
+        android:paddingBottom="25dp"
+        android:background="@drawable/sub_list_background"
+        android:listSelector="@drawable/main_list_selector">
+    </ListView>
+
+</RelativeLayout>
