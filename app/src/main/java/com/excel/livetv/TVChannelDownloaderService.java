@@ -1,10 +1,6 @@
 package com.excel.livetv;
 
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -16,17 +12,24 @@ import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.excel.excelclasslibrary.UtilFile;
+import com.excel.configuration.ConfigurationReader;
 import com.excel.excelclasslibrary.UtilNetwork;
 import com.excel.excelclasslibrary.UtilSQLite;
 import com.excel.excelclasslibrary.UtilSharedPreferences;
 import com.excel.excelclasslibrary.UtilShell;
+import com.excel.excelclasslibrary.UtilURL;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class TVChannelDownloaderService extends Service {
 	
-	static final String TAG = "DownloaderService";
+	static final String TAG = "TVChannelDownloader";
 	Context context = this;
 	SharedPreferences spfs;
+
+	ConfigurationReader configurationReader = null;
 	
 	@Override
 	public IBinder onBind( Intent intent ) {
@@ -36,6 +39,7 @@ public class TVChannelDownloaderService extends Service {
 	@Override
 	public int onStartCommand( Intent intent, int flags, int startId ) {
 		Log.i( TAG, "inside the TVChannelDownloader Service !" );
+		configurationReader = ConfigurationReader.getInstance();
 		
 		spfs = UtilSharedPreferences.createSharedPreference( context, "md5" );
 		
@@ -61,12 +65,14 @@ public class TVChannelDownloaderService extends Service {
 			
 			@Override
 			protected String doInBackground( Void... params ) {
-				String cms_ip = UtilFile.getCMSIpFromTextFile();
-				String URL = String.format( "http://%s/appstv/webservice.php", cms_ip );
-				
+				//String cms_ip = UtilFile.getCMSIpFromTextFile();
+				// String URL = String.format( "http://%s/appstv/webservice.php", cms_ip );
+
+				String URL = UtilURL.getWebserviceURL();//String.format( "http://%s/appstv2/webservice.php", "iptv6.appstvlive.com" );
+
 				Log.d( TAG, URL );
 				
-				String result = UtilNetwork.makeRequestForData( URL, "POST", "what_do_you_want=get_iptv_channels&mac_address="+UtilNetwork.getMacAddress( context ) );
+				String result = UtilNetwork.makeRequestForData( URL, "POST", "what_do_you_want=get_iptv_channels&mac_address="+ UtilNetwork.getMacAddress( context ) );
 				
 				return result;
 			}
@@ -76,7 +82,7 @@ public class TVChannelDownloaderService extends Service {
 				super.onPostExecute( result );
 				
 				if( result == null ){
-					Toast.makeText( context, "Cant sync TV Channels !", Toast.LENGTH_LONG ).show();
+					Toast.makeText( context, "Cant sync TV Channels !", Toast.LENGTH_SHORT ).show();
 					
 					// Set a Timer to try after 30 seconds
 					setRetryTimer();
@@ -96,10 +102,10 @@ public class TVChannelDownloaderService extends Service {
 					Log.d( TAG, String.format( "old md5 : %s, new md5 : %s", old_md5, md5 ) );
 					
 					
-					if( ! old_md5.equals( "" ) && old_md5.equals( md5 ) ){
+					/*if( ! old_md5.equals( "" ) && old_md5.equals( md5 ) ){
 						// No need to update
 						return;
-					}
+					}*/
 					
 					// update the tv list
 					UtilSharedPreferences.editSharedPreference( spfs, "md5", md5 );
@@ -135,7 +141,7 @@ public class TVChannelDownloaderService extends Service {
 					
 					UtilShell.executeShellCommandWithOp( "setprop is_iptv_channels_synced 1" );
 					
-					// Restart TV Player
+					// Restart TV DTVPlayer
 					
 				} 
 				catch ( JSONException e ) {
@@ -161,7 +167,7 @@ public class TVChannelDownloaderService extends Service {
 	
 	public void createTvChannelsDatabase(){
 		SQLiteDatabase sqldb = UtilSQLite.makeDatabase( "tv_channels.db", context );
-		String sql1 = "CREATE TABLE categories (sequence TEXT, id INTEGER PRIMARY KEY, category_name TEXT)";
+		String sql1 = "CREATE TABLE categories (sequence NUMERIC, id INTEGER PRIMARY KEY, category_name TEXT)";
 		String sql2 = "CREATE TABLE channels (icon TEXT, category_id NUMERIC, id INTEGER PRIMARY KEY, sequence NUMERIC, channel_name TEXT, channel_url TEXT)";
 		// UtilSQLite.executeQuery( sqldb, sql1, false );
 		// UtilSQLite.executeQuery( sqldb, sql2, false );

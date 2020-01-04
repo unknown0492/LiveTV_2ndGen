@@ -16,24 +16,6 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".Player"
-            android:theme="@android:style/Theme.NoTitleBar"
-            android:launchMode="singleInstance"
-            android:hardwareAccelerated="false">
-            <!--<intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>-->
-        </activity>
-
-
-        <activity
-            android:name=".TvList"
-            android:label="TV List"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar.Fullscreen">
-        </activity>
 
         <activity android:name=".SplashLoading">
             <intent-filter>
@@ -42,6 +24,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name=".LiveTV">
+
+        </activity>
+        <activity
+            android:name=".ShortcutsActivity"
+            android:launchMode="singleInstance"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+        <activity
+            android:name=".TvList"
+            android:label="TV List"
+            android:theme="@style/AppThemeTranslucent" />
+        <activity
+            android:name=".TvListSimple"
+            android:label="TV List"
+            android:theme="@style/AppThemeTranslucent" />
+
+
 
         <receiver android:name=".Receiver">
             <intent-filter>

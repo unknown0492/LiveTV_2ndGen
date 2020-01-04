@@ -3,55 +3,57 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
+
+    <VideoView
+        android:id="@+id/videoView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical" >
+        android:layout_centerInParent="true" />
 
-        <SurfaceView
-            android:id="@+id/surface"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="center" >
-        </SurfaceView>
 
-    </LinearLayout>
-	
     <LinearLayout 
         android:id="@+id/loading"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:orientation="vertical"
         android:layout_centerHorizontal="true"
-        android:layout_centerVertical="true">
+        android:layout_centerVertical="true"
+        android:background="#000000"
+        android:visibility="gone">
         
         <com.excel.livetv.AnimatedGifImageView
 	        android:id="@+id/loading_channel"
 	        android:layout_width="80dp"
 	        android:layout_height="80dp"
+	        android:visibility="gone"
 	         />
 	    
 	    <TextView 
 	        android:layout_width="wrap_content"
-	        android:layout_height="wrap_content"
-	        android:text="Loading"
-	        android:textSize="17dp"
+	        android:layout_height="match_parent"
+	        android:text="Buffering..."
+	        android:textSize="30dp"
 	        android:layout_gravity="center_horizontal"
-	        android:gravity="center_horizontal"
-			android:visibility="gone"
+	        android:gravity="center_vertical"
+	        android:visibility="gone"
 	        android:textColor="#ffffff" />
         
     </LinearLayout>
     
     
+    <!-- Channel numbers being pressed on the remote control -->
     <LinearLayout 
         android:id="@+id/ll_channel_nos"
-        android:layout_width="wrap_content"
+        android:layout_width="200dp"
         android:layout_height="wrap_content"
         android:layout_marginRight="50dp"
-        android:layout_marginTop="30dp"
+        android:layout_marginTop="100dp"
         android:layout_alignParentRight="true"
+	    android:layout_alignParentTop="true"
+	    android:layout_alignParentEnd="true"
+	    android:gravity="center_horizontal"
         android:alpha="0.0"
+        
         android:orientation="horizontal">
         
         <TextView 
@@ -59,7 +61,7 @@
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        android:text="-"
-	        android:textSize="70dp"
+	        android:textSize="70sp"
 	        android:layout_gravity="center_horizontal"
 	        android:gravity="center_horizontal"
 	        android:textColor="#ffffff" />
@@ -69,12 +71,71 @@
 	        android:layout_width="wrap_content"
 	        android:layout_height="wrap_content"
 	        android:text="-"
-	        android:textSize="70dp"
+	        android:textSize="70sp"
 	        android:layout_gravity="center_horizontal"
 	        android:gravity="center_horizontal"
 	        android:textColor="#ffffff" />
         
     </LinearLayout>
+    
+    
+    
+    <TextView 
+        android:layout_width="200dp" 
+        android:layout_height="wrap_content" 
+        android:textSize="70sp" 
+        android:id="@+id/tv_channel_no1"
+		android:textColor="@color/white"
+        android:gravity="center_horizontal"
+	    android:visibility="gone"
+	    android:layout_marginRight="50dp"
+	    android:layout_above="@+id/ll_tv_channel_info"
+	    android:layout_alignParentRight="true"
+        android:text="50" />
+    
+    <LinearLayout	
+	    android:layout_width="200dp"
+	    android:layout_height="wrap_content"
+	    android:gravity="center_horizontal"
+	    android:layout_alignParentRight="true"
+	    android:layout_alignParentBottom="true"
+	    android:layout_alignParentEnd="true"
+	    android:layout_marginRight="50dp"
+	    android:layout_marginBottom="50dp"
+	    android:id="@+id/ll_tv_channel_info"
+	    android:visibility="gone"
+	    android:orientation="vertical" >
+        
+        
+	    
+	    <TextView 
+	        android:layout_width="wrap_content" 
+	        android:layout_height="match_parent"
+	        android:text="Now Showing"
+			android:textColor="@color/white"
+	        android:padding="5dp"
+	        android:paddingBottom="30dp"
+	        android:textSize="25sp" />
+	      
+	    <ImageView 
+	        android:layout_width="73dp"
+	        android:layout_height="45dp"
+			android:background="@drawable/icon_adithya_tv"
+			android:id="@+id/iv_channel_icon1"
+	        />
+	    
+	    <TextView 
+	        android:layout_width="wrap_content" 
+	        android:layout_height="match_parent"
+	        android:text="Adithya TV"
+			android:textColor="@color/white"
+	        android:id="@+id/tv_channel_name1"
+			android:gravity="center_horizontal"
+	        android:padding="5dp"
+	        android:textStyle="bold"
+	        android:textSize="20sp" />
+
+	</LinearLayout>
     
     
 </RelativeLayout>

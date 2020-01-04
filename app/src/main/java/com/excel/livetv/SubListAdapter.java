@@ -1,7 +1,6 @@
 package com.excel.livetv;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -14,11 +13,13 @@ public class SubListAdapter extends BaseAdapter {
 	Context context;
 	String[][] sub_list_items;
 	int resId;
+	boolean is_channel_nos_needed;
 	
-	public SubListAdapter( Context context, String[][] sub_list_items, int resId ){
+	public SubListAdapter( Context context, String[][] sub_list_items, boolean is_channel_nos_needed, int resId ){
 		this.context = context;
 		this.sub_list_items= sub_list_items;
 		this.resId = resId;
+		this.is_channel_nos_needed = is_channel_nos_needed;
 	}
 	
 	@Override
@@ -49,11 +50,16 @@ public class SubListAdapter extends BaseAdapter {
 		
 		TextView tv_channel_url = (TextView) ll.findViewById( R.id.tv_channel_url );
 		tv_channel_url.setText( sub_list_items[ position ][ TvList.CHANNEL_URL ] );
-			
+		
 		TextView tv_channel_id = (TextView) ll.findViewById( R.id.tv_channel_id );
 		tv_channel_id.setText( sub_list_items[ position ][ TvList.CHANNEL_ID ] );
 		
+		if( is_channel_nos_needed ){
+			tv_channel_number.setVisibility( View.VISIBLE );
+		}
 		// Log.i( null, ","+sub_list_items[ position ][ TvList.CHANNEL_ICON ]+"," );
+
+
 		
 		ImageView iv_channel_icon = (ImageView) ll.findViewById( R.id.iv_channel_icon );  
 		int resID = context.getResources().getIdentifier( sub_list_items[ position ][ TvList.CHANNEL_ICON ], "drawable",  context.getPackageName() );

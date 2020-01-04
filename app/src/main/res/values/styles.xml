@@ -14,4 +14,9 @@
 
     <color name="list_background_color">#3e71c2</color>
 
+    <style name="AppThemeTranslucent" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/transparent_40</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
+
 </resources>

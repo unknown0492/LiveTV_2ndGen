@@ -1,7 +1,6 @@
 package com.excel.livetv;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,7 +39,7 @@ public class MainListAdapter extends BaseAdapter {
 
 	@Override
 	public View getView( int position, View convertView, ViewGroup parent ) {
-		// Log.i( null, "Main List View Refreshed" );
+		// Log.i( null, "Total items : "+getCount() );
 		LinearLayout ll = null;
 		if ( convertView == null ) {
             LayoutInflater inflator = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE );
@@ -50,6 +49,8 @@ public class MainListAdapter extends BaseAdapter {
         }
 		
 		// LinearLayout ll = (LinearLayout) View.inflate( context, resId, null );
+		ImageView iv_category_icon = (ImageView) ll.findViewById( R.id.iv_category_icon );
+		iv_category_icon.setVisibility( View.INVISIBLE );
 		
 		TextView tv_channel_category_id = (TextView) ll.findViewById( R.id.tv_channel_category_id );
 		tv_channel_category_id.setText( main_list_items[ position ][ TvList.CATEGORY_ID ] );
@@ -57,9 +58,12 @@ public class MainListAdapter extends BaseAdapter {
 		TextView tv_channel_category = (TextView) ll.findViewById( R.id.tv_channel_category );
 		tv_channel_category.setText( main_list_items[ position ][ TvList.CATEGORY_NAME ] );
 		
-		if( main_list_items[ position ][ TvList.CATEGORY_ID ].equals( "0" ) ){
-			ImageView iv_category_icon = (ImageView) ll.findViewById( R.id.iv_category_icon );
+		//if( main_list_items[ position ][ TvList.CATEGORY_ID ].equals( "0" ) ){
+		if( tv_channel_category_id.getText().toString().trim().equals( "0" ) ){
+			// Log.e( null, String.format( "cat-name : %s, id : %s, position : %s", main_list_items[ position ][ TvList.CATEGORY_NAME ], main_list_items[ position ][ TvList.CATEGORY_ID ], position ) );
 			iv_category_icon.setBackgroundResource( R.drawable.all_channels_icon );
+			iv_category_icon.setVisibility( View.VISIBLE );
+			
 		}
 		 
 		 

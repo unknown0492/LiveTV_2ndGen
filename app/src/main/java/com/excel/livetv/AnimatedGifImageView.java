@@ -1,10 +1,5 @@
 package com.excel.livetv;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Movie;
@@ -12,10 +7,15 @@ import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
-import android.support.v7.widget.AppCompatImageView;
 import android.util.AttributeSet;
 import android.view.View;
-import android.widget.ImageView;
+
+import androidx.appcompat.widget.AppCompatImageView;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 
 public class AnimatedGifImageView extends AppCompatImageView {
 	public static enum TYPE {
@@ -23,7 +23,7 @@ public class AnimatedGifImageView extends AppCompatImageView {
 	};
 
 	public AnimatedGifImageView(Context context, AttributeSet attrs,
-			int defStyle) {
+                                int defStyle) {
 		super(context, attrs, defStyle);
 	}
 
@@ -216,7 +216,7 @@ public class AnimatedGifImageView extends AppCompatImageView {
 				}
 				int relTime = (int) ((now - mMovieStart) % dur);
 				mMovie.setTime(relTime);
-				canvas.save();
+				canvas.save(); // MATRIX_SAVE_FLAG
 				canvas.scale(mScaleW, mScaleH);
 				mMovie.draw(canvas, mLeft / mScaleW, mTop / mScaleH);
 				canvas.restore();

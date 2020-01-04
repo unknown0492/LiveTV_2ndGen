@@ -170,7 +170,7 @@ public class SplashLoading extends Activity {
                 Toast.makeText( context, "Cannot sync new TV channels !", Toast.LENGTH_LONG ).show();
             }
 
-            Intent in = new Intent( context, Player.class );
+            Intent in = new Intent( context, LiveTV.class );
             startActivity( in );
             //SplashLoading.this.overridePendingTransition( R.anim.show_tv_list_anim, R.anim.hide_tv_list_anim );
             finish();

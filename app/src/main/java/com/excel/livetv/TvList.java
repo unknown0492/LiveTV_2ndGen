@@ -1,6 +1,5 @@
 package com.excel.livetv;
 
-import static com.excel.livetv.Constants.SPFS_LAST_CHANNEL_HISTORY;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -10,9 +9,9 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Parcelable;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -26,8 +25,14 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.excel.excelclasslibrary.UtilSQLite;
 import com.excel.excelclasslibrary.UtilSharedPreferences;
+import com.excel.excelclasslibrary.UtilShell;
+
+import static com.excel.livetv.Constants.SPFS_LAST_CHANNEL_HISTORY;
+
 
 public class TvList extends Activity {
 	
@@ -44,10 +49,9 @@ public class TvList extends Activity {
 	SQLiteDatabase sqldb; 
 	SharedPreferences spfs;
 	
-	ImageView iv_left_arrow;
+	ImageView iv_left_arrow, iv_right_arrow;
 	TextView tv_category_name;
 	
-
 	public static final int CATEGORY_ID   = 0;
 	public static final int CATEGORY_NAME = 1;
 	
@@ -57,18 +61,13 @@ public class TvList extends Activity {
 	public static final int CHANNEL_URL			= 3;
 	public static final int CHANNEL_ICON		= 4;
 	
+	final static int TV_LIST_DISAPPEAR_SECONDS	= 8;
 	
-	@Override
-	protected void onCreate( Bundle savedInstanceState ) {
-		super.onCreate( savedInstanceState );
-		setContentView( R.layout.activity_tvlist );
-		
-		init();
-		
-	}
-
+	AppPreferences app_prefs;
+	
 	String[][] main_list_items;
 	String[] sub_list_items;
+	boolean is_channel_nos_needed = false;
 	
 	String[] s1;
 	String[] s2;
@@ -79,24 +78,31 @@ public class TvList extends Activity {
 	final Handler tvlist_idle_timeout = new Handler();
 	long current_timestamp;
 	
+	@Override
+	protected void onCreate( Bundle savedInstanceState ) {
+		super.onCreate( savedInstanceState );
+		setContentView( R.layout.activity_tvlist );
+		
+		init();
+	}
+	
 	@SuppressLint("ResourceAsColor") 
 	private void init(){
 		list_main = (ListView) findViewById( R.id.list_main );
 		list_sub  = (ListView) findViewById( R.id.list_sub ); 
 		
-		//main_list_items = new String[]{ "Sports", "Kids", "Action", "Genre", "Movies", "Daily Soaps", "Education", "Wildlife", "Nature", "Two", "Three", "Four", "One", "Two", "Three", "Four", "One", "Two", "Three", "Four", "One", "Two", "Three", "Four" };
 		sub_list_items = new String[]{ "One", "Two", "Three", "Four", "One", "Two", "Three", "Four", "One", "Two", "Three", "Four", "One", "Two", "Three", "Four", "One", "Two", "Three", "Four", "One", "Two", "Three", "Four" };
 		
+		app_prefs = new AppPreferences( context );
+		
 		initializeSQLite();
-		initializeSharedPreferences();
+		// initializeSharedPreferences();
 		
 		s1 = new String[]{ "aaa", "bbb", "ccc" };
 		s2 = new String[]{ "ddd", "eee", "fff" };
 		s3 = new String[]{ "ggg", "hhh", "zzz" }; 
 		
 		mla = new MainListAdapter( context, main_list_items, R.layout.list_item );
-		// sla  = new SubListAdapter( context, sub_list_items, R.layout.list_item_subitem );
-		// ArrayAdapter<String> aap1 = new ArrayAdapter<String>( TvList.this, android.R.layout.simple_list_item_1, sub_list_items );
 		list_main.setAdapter( mla ); 
 		list_main.setBackgroundResource( R.drawable.list_background_blue );
 		list_main.getBackground().setAlpha( 75 );  
@@ -104,32 +110,25 @@ public class TvList extends Activity {
 		list_sub.setAdapter( sla );
 		
 		iv_left_arrow = (ImageView) findViewById( R.id.iv_left_arrow );
+		iv_right_arrow = (ImageView) findViewById( R.id.iv_right_arrow );
 		tv_category_name = (TextView) findViewById( R.id.tv_category_name );
-		//list_sub.setBackgroundResource( R.drawable.list_background_transparent );
-		//list_sub.getBackground().setAlpha( 0 ); 
 		
 		setOnMainListClickListener();     
 		setOnSubListClickListener();     
-		 
+		
 		setOnMainListFocusChangedListener();
 		setOnSubListFocusChangedListener();
-		  
 		  
 		list_main.setOnItemSelectedListener( new OnItemSelectedListener() {
 
 			@Override
 			public void onItemSelected( AdapterView<?> parent, View view, int position, long id ) {
-				Log.d( TAG, "changed" );
-				//index_main_list = list_main.getSelectedItemPosition();
 				showSubList();
-				//list_sub.setBackgroundResource( R.drawable.list_background_transparent );
-				//list_sub.getBackground().setAlpha( 0 );
 			}
 
 			@Override
 			public void onNothingSelected(AdapterView<?> parent) {
 				// TODO Auto-generated method stub
-				
 			}
 			
 		});
@@ -137,28 +136,32 @@ public class TvList extends Activity {
 		// Current Time in Milliseconds when activity is loaded
 		current_timestamp = System.currentTimeMillis();
 		idleCheckTimer();
+		
+		// Set as on tv list
+		AppPreferences.setBackFromTVList( true );
 	}
 	
 	public void idleCheckTimer(){
 		// Start 10 second timer
 		tvlist_idle_timeout.postDelayed( new Runnable() {
+			
 			@Override
 			public void run() {
 				long now = System.currentTimeMillis();
 				long difference = ( now - current_timestamp )/1000;
 				
-				Log.d( TAG, "idleCheckTimer() run after 10 seconds, now : "+now+", current_timestamp : "+current_timestamp+", difference : "+difference );
+				//Log.d( TAG, "idleCheckTimer() run after 10 seconds, now : "+now+", current_timestamp : "+current_timestamp+", difference : "+difference );
 				
-				if( difference < 20 ){
+				if( difference < TV_LIST_DISAPPEAR_SECONDS ){
 					idleCheckTimer();
 				}
 				else{
 					// Close the TV List
-					finish();  
-					//TvList.this.overridePendingTransition( R.anim.show_tv_list_anim, R.anim.hide_tv_list_anim );
-				
+					finish();
+					TvList.this.overridePendingTransition( R.anim.show_tv_list_anim, R.anim.hide_tv_list_anim );
 				}
 			}
+			
 		}, 5000 );
 		
 	}
@@ -167,7 +170,7 @@ public class TvList extends Activity {
 	@Override
 	public void onUserInteraction() {
 		super.onUserInteraction();
-		Log.d( TAG, "onUserInteraction()" );
+		//Log.d( TAG, "onUserInteraction()" );
 		
 		current_timestamp = System.currentTimeMillis();
 	}
@@ -177,25 +180,17 @@ public class TvList extends Activity {
 		super.onResume();
 		Log.d( TAG, "inside onResume()" );
 		
-		int category_position = Integer.parseInt( (String)UtilSharedPreferences.getSharedPreference( spfs, "category_position", "-1" ) );
-		int channel_position = Integer.parseInt( (String)UtilSharedPreferences.getSharedPreference( spfs, "channel_position", "-1" ) );
+		showCurrentChannelOnTvList();
 		
-		/*if( channel_position != -1 ){
-			list_main.setSelection( category_position );
-			dispatchKeyEvent( new KeyEvent( KeyEvent.ACTION_DOWN, 22 ) );
-			// list_sub.setVisibility( View.VISIBLE );
-			list_sub.setSelection( channel_position );
-			list_sub.requestFocus();
-		}  */
-		Log.d( TAG, "channel_position : "+channel_position ); 
-		 
 	}
+	
+	
 	
 	@Override
 	public void onBackPressed() {
 		super.onBackPressed();
 		
-		Log.d( TAG, "onBackPressed()" );
+		//Log.d( TAG, "onBackPressed()" );
 		finish();  
 		this.overridePendingTransition( R.anim.show_tv_list_anim, R.anim.hide_tv_list_anim );
 	
@@ -212,17 +207,14 @@ public class TvList extends Activity {
 				ListView lv = (ListView) v;
 				
 				if( hasFocus ){
-					Log.i( TAG, "Focus gained on main List, main list position from backup : "+index_main_list );        
 					list_main.setSelection( index_main_list );
 					switchFocus( FOCUSSED_LEFT );
 					animateSubListOut();
 					showSubList();	
-					// int position = lv.getSelectedItemPosition();
-					// Log.i( TAG, "Position of focussed item on main list : "+position );
 				}
 				else{
 					index_main_list = list_main.getSelectedItemPosition();
-					Log.i( TAG, "Focus lost from main List, main list position : "+index_main_list );   
+					//Log.i( TAG, "Focus lost from main List, main list position : "+index_main_list );   
 					switchFocus( FOCUSSED_RIGHT );
 				}
 			}
@@ -235,17 +227,13 @@ public class TvList extends Activity {
 			@Override
 			public void onFocusChange( View v, boolean hasFocus ) {
 				if( hasFocus ){
-					Log.i( TAG, "Focus gained on sub List" );        
+					//Log.i( TAG, "Focus gained on sub List" );        
 					switchFocus( FOCUSSED_RIGHT );
-					// list_main.setSelection( index_main_list );
-					// int position = lv.getSelectedItemPosition();
 					// Log.i( TAG, "Position of focussed item on main list : "+position );
 				}
 				else{
 					switchFocus( FOCUSSED_LEFT );
-					
-					// index_main_list = list_main.getSelectedItemPosition();
-					Log.i( TAG, "Focus lost from Sub List" );        
+					//Log.i( TAG, "Focus lost from Sub List" );
 				}
 			}
 		});
@@ -256,17 +244,11 @@ public class TvList extends Activity {
 
 			@Override
 			public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-				Log.i( TAG, "setOnItemSelectedListener called" );
-				//view.animate().setDuration( 1000 ).alpha( 0.5f );
-				/*ObjectAnimator anim = ObjectAnimator.ofFloat( view, View.ALPHA, 0.5f );
-				anim.setDuration( 1000 );
-				anim.start();*/
-				
+				//Log.i( TAG, "setOnItemSelectedListener called" );
 			}
 
 			@Override
 			public void onNothingSelected(AdapterView<?> parent) {
-				// TODO Auto-generated method stub
 				
 			}
 			
@@ -278,29 +260,62 @@ public class TvList extends Activity {
 
 			@Override
 			public void onItemClick( AdapterView<?> parent, View view, int position, long id ) {
-				// Log.i( TAG, "position : "+position );        
 				LinearLayout ll = (LinearLayout) view;
 				TextView tv_channel_url  = (TextView) ll.findViewById( R.id.tv_channel_url );
 				TextView tv_channel_id   = (TextView) ll.findViewById( R.id.tv_channel_id );
 				TextView tv_channel_name = (TextView) ll.findViewById( R.id.tv_channel_name );
 				
 				String tv_ch_url = tv_channel_url.getText().toString();
-				Log.i( TAG, "position : "+position+", Url : "+tv_ch_url );        
-				 
+				String tv_ch_id = tv_channel_id.getText().toString();
+				//Log.i( TAG, "position : "+position+", Url : "+tv_ch_url );        
+				
+				String sql = "SELECT b.sequence as category_sequence, b.id as category_id, b.category_name, a.id as channel_id, a.sequence as channel_sequence, " +
+						"a.channel_name, a.channel_url, a.icon as channel_icon FROM channels a, categories b  WHERE a.id = "+ tv_ch_id +" and (b.id=a.category_id)";
+				Log.d( TAG, sql );
+				Cursor 	 c = UtilSQLite.executeQuery( sqldb, sql, false );
+				if( c == null ){
+					Toast.makeText( context, "Error occurred !", Toast.LENGTH_LONG ).show();
+					tv_ch_url = "";
+					return;
+				}
+				if( c.getCount() == 0 ){
+					Toast.makeText( context, "Channel does not exist !", Toast.LENGTH_LONG ).show();
+					return;
+				}
+				c.moveToNext();
+				
 				Intent intent = new Intent( "switch_channel" );
 				intent.putExtra( "url", tv_ch_url );
+				intent.putExtra( "channel_number", tv_ch_id );
+				
 				LocalBroadcastManager.getInstance( TvList.this ).sendBroadcast( intent );
 				
 				// Store the data into spfs
-				UtilSharedPreferences.editSharedPreference( spfs, "channel_id", tv_channel_id.getText().toString() );
+				/*UtilSharedPreferences.editSharedPreference( spfs, "channel_id", tv_channel_id.getText().toString() );
 				UtilSharedPreferences.editSharedPreference( spfs, "channel_url", tv_ch_url );
 				UtilSharedPreferences.editSharedPreference( spfs, "channel_name", tv_channel_name.getText().toString() );
 				UtilSharedPreferences.editSharedPreference( spfs, "channel_position", String.valueOf( position ) );
-				UtilSharedPreferences.editSharedPreference( spfs, "category_position", String.valueOf( list_main.getSelectedItemPosition() ) );
+				UtilSharedPreferences.editSharedPreference( spfs, "category_position", String.valueOf( list_main.getSelectedItemPosition() ) );*/
 				
-				/*Intent in = new Intent( TvList.this, Player.class );
+				setCurrentChannelNumber( tv_ch_id );
+				
+				/*app_prefs.setCurrentChannelID( tv_channel_id.getText().toString() );
+				app_prefs.setCurrentChannelURL( tv_ch_url );
+				app_prefs.setCurrentChannelName( tv_channel_name.getText().toString() );
+				app_prefs.setCurrentChannelSequence( String.valueOf( position + 1 ) );
+				app_prefs.setCurrentCategorySequence( String.valueOf( list_main.getSelectedItemPosition() + 1 ) );*/
+				
+				app_prefs.setAllPreferences( c.getString( c.getColumnIndex( "channel_id" ) ), c.getString( c.getColumnIndex( "channel_name" ) ), c.getString( c.getColumnIndex( "channel_sequence" ) ), 
+						c.getString( c.getColumnIndex( "channel_url" ) ), c.getString( c.getColumnIndex( "channel_icon" ) ), 
+						c.getString( c.getColumnIndex( "category_id" ) ), c.getString( c.getColumnIndex( "category_name" ) ), 
+						c.getString( c.getColumnIndex( "category_sequence" ) ) );
+				
+				
+				/*Intent in = new Intent( TvList.this, DTVPlayer.class );
 				in.putExtra( "url", tv_ch_url );
 				startActivity( in );*/
+				//finish();
+				showCurrentChannelOnTvList();
 			}
 			
 		});
@@ -310,7 +325,7 @@ public class TvList extends Activity {
 	
 	
 	private void initializeSQLite(){
-		sqldb = UtilSQLite.makeDatabase( "tv_channels.db", context ); 
+		sqldb = UtilSQLite.makeExternalDatabase( Environment.getExternalStorageDirectory().getAbsolutePath(), "tv_channels.db", context );//UtilSQLite.makeDatabase( "tv_channels.db", context );
 		
 		String sql = "SELECT count(*) FROM categories as count";
 		Cursor 	 c = UtilSQLite.executeQuery( sqldb, sql, false );
@@ -332,6 +347,7 @@ public class TvList extends Activity {
 			c.moveToNext();
 			main_list_items[ i ][ CATEGORY_NAME ] = c.getString( c.getColumnIndex( "category_name" ) );
 			main_list_items[ i ][ CATEGORY_ID ] = c.getString( c.getColumnIndex( "id" ) );
+			// Log.e( TAG, String.format( "cat-name : %s, id : %s", main_list_items[ i ][ CATEGORY_NAME ], main_list_items[ i ][ CATEGORY_ID ] ) );
 		}
 		
 	}
@@ -373,6 +389,7 @@ public class TvList extends Activity {
 			showSubList();
 			animateSubListIn();
 			state = list_main.onSaveInstanceState();
+			// return true;
 			
 		}
 		else if( ( code == 20 ) && ( focus == FOCUSSED_RIGHT ) ){ // Down pressed && FOCUSSED_RIGHT -> Last element in the list has been reached
@@ -385,7 +402,7 @@ public class TvList extends Activity {
 			
 		}*/
 		/*else if( code == 4 ){ // Back pressed
-			Intent in = new Intent( context, Player.class );
+			Intent in = new Intent( context, DTVPlayer.class );
 			startActivity( in ); 
 			finish();
 			return true;
@@ -397,7 +414,7 @@ public class TvList extends Activity {
 
 	@Override
 	public boolean onKeyUp( int keyCode, KeyEvent event ) {
-		Log.i( TAG, "Key pressed : "+event.getKeyCode() );
+		//Log.i( TAG, "Key pressed : "+event.getKeyCode() );
 		
 		int code = event.getKeyCode();
 		
@@ -420,7 +437,8 @@ public class TvList extends Activity {
 	public void showSubList(){
 		//list_sub.setVisibility( View.VISIBLE );
 		String position = String.valueOf( list_main.getSelectedItemPosition() );
-		Log.e(TAG, "pos : "+position );
+		//Log.e(TAG, "pos : "+position );
+		
 		if( position.equals( "-1" ) )
 			position = "0";
 		
@@ -428,14 +446,22 @@ public class TvList extends Activity {
 		
 		String sql = "";
 		if( main_list_items[ Integer.parseInt( position ) ][ CATEGORY_ID ].equals( "0" ) )
-			sql = "Select * FROM channels GROUP BY channel_id ORDER BY id ";
+			sql = "Select * FROM channels ORDER BY id";
 		else
 			sql = "Select * FROM channels WHERE category_id ="+main_list_items[ Integer.parseInt( position ) ][ CATEGORY_ID ]+" ORDER BY sequence";
 		
-		Log.i( TAG, "sql : "+sql );
+		//Log.i( TAG, "sql : "+sql );
 		Cursor c = UtilSQLite.executeQuery( sqldb, sql, false );
 		
 		String[][] temp = new String[ c.getCount() ][ c.getColumnCount() ];
+		
+		if( position.equals( "0" ) ){
+			sla  = new SubListAdapter( context, temp, false, R.layout.list_item_subitem );
+		}
+		else{
+			sla  = new SubListAdapter( context, temp, true, R.layout.list_item_subitem );
+		}
+		
 		for( int i = 0 ; i < c.getCount() ; i++ ){
 			c.moveToNext();
 			temp[ i ][ CHANNEL_ID ] = c.getString( c.getColumnIndex( "id" ) );
@@ -444,14 +470,33 @@ public class TvList extends Activity {
 			temp[ i ][ CHANNEL_URL ] = c.getString( c.getColumnIndex( "channel_url" ) );
 			temp[ i ][ CHANNEL_ICON ] = c.getString( c.getColumnIndex( "icon" ) );
 		}
+		//}
+		/*else{
+			for( int i = 0 ; i < c.getCount() ; i++ ){
+				c.moveToNext();
+				temp[ i ][ CHANNEL_ID ] = "";
+				temp[ i ][ CHANNEL_SEQUENCE ] = c.getString( c.getColumnIndex( "sequence" ) );
+				temp[ i ][ CHANNEL_NAME ] = c.getString( c.getColumnIndex( "channel_name" ) );
+				temp[ i ][ CHANNEL_URL ] = c.getString( c.getColumnIndex( "channel_url" ) );
+				temp[ i ][ CHANNEL_ICON ] = c.getString( c.getColumnIndex( "icon" ) );
+			}
+		}*/
 		
-		sla  = new SubListAdapter( context, temp, R.layout.list_item_subitem );
+		
 		
 		list_sub.setAdapter( sla );
 	}
 	
 	
 	
+	@Override
+	protected void onDestroy() {
+		// TODO Auto-generated method stub
+		super.onDestroy();
+		
+		sqldb.close();
+	}
+
 	public void animateSubListIn(){
 		// Animate Sub-List In
 		ObjectAnimator transAnimation = ObjectAnimator.ofFloat( list_sub, "translationX", -200 );
@@ -478,6 +523,10 @@ public class TvList extends Activity {
 		ObjectAnimator arrowAnimation = ObjectAnimator.ofFloat( iv_left_arrow, "alpha", 0.0f, 1.0f );
 		arrowAnimation.setDuration( 500 );//set duration
 		arrowAnimation.start();//start animation
+		
+		ObjectAnimator arrowAnimation1 = ObjectAnimator.ofFloat( iv_right_arrow, "alpha", 1.0f, 0.0f );
+		arrowAnimation1.setDuration( 500 );//set duration
+		arrowAnimation1.start();//start animation
 	}
 	
 	public void animateSubListOut(){
@@ -489,6 +538,11 @@ public class TvList extends Activity {
 		ObjectAnimator transAnimation1 = ObjectAnimator.ofFloat( tv_category_name, "translationX", 0 );
 		transAnimation1.setDuration( 600 );//set duration
 		transAnimation1.start();//start animation
+		
+		ObjectAnimator transAnimation2 = ObjectAnimator.ofFloat( iv_right_arrow, "translationX", 0 );
+		transAnimation2.setDuration( 600 );//set duration
+		transAnimation2.start();//start animation
+		
 		
 		// Animation anim_in = AnimationUtils.loadAnimation( context, R.anim.sub_list_in );
 		// list_sub.startAnimation( anim_in );
@@ -506,9 +560,71 @@ public class TvList extends Activity {
 		list_main.setBackgroundResource( R.drawable.list_background_blue );
 		list_main.getBackground().setAlpha( 75 );
 		
-		
 		ObjectAnimator arrowAnimation = ObjectAnimator.ofFloat( iv_left_arrow, "alpha", 1.0f, 0.0f );
 		arrowAnimation.setDuration( 500 );//set duration
 		arrowAnimation.start();//start animation
+		
+		ObjectAnimator arrowAnimation1 = ObjectAnimator.ofFloat( iv_right_arrow, "alpha", 0.0f, 1.0f );
+		arrowAnimation1.setDuration( 500 );//set duration
+		arrowAnimation1.start();//start animation
+		
+	}
+
+	public static String getCurrentChannelNumber(){
+		String channel_number = UtilShell.executeShellCommandWithOp( "getprop current_ch_number" );
+		return channel_number.trim();
+	}
+	
+	public static void setCurrentChannelNumber( String channel_number ){
+		UtilShell.executeShellCommandWithOp( "setprop current_ch_number "+channel_number );
+	}
+	
+	public void showCurrentChannelOnTvList(){
+		String ch[] = getFirstChannelNameAndImage();
+		spfs = app_prefs.getSharedPreferences();
+		String channel_name = spfs.getString( "channel_name", ch[ 0 ] );
+		String icon = spfs.getString( "icon", ch[ 1 ] );
+		Log.d( TAG, "channel_name : "+channel_name+", channel_name1 : "+ch[ 0 ] );
+		
+		if( ! channel_name.equals( ch[ 0 ] ) ){
+			/*String channel_id = app_prefs.getCurrentChannelID();
+			String sql = "SELECT * FROM channels WHERE id = "+channel_id;
+			Cursor 	 c = UtilSQLite.executeQuery( sqldb, sql, false );
+			if( c == null ){
+				Toast.makeText( context, "TV Channels have not yet synchronized !", Toast.LENGTH_LONG ).show();
+				return ;
+			}
+			if( c.getCount() == 0 ){
+				Toast.makeText( context, "Channel 1 does not exist !", Toast.LENGTH_LONG ).show();
+				return ;
+			} 
+			c.moveToNext();*/
+			icon = app_prefs.getCurrentChannelIcon(); //c.getString( c.getColumnIndex( "icon" ) );
+		}
+		//LinearLayout ll = (LinearLayout) View.inflate( context, R.layout.tv_ch_info, null );
+		TextView tv_channel_no1 = (TextView) findViewById( R.id.tv_channel_no1 );
+		tv_channel_no1.setText( app_prefs.getCurrentChannelID() );
+		
+		TextView tv_channel_name = (TextView) findViewById( R.id.tv_channel_name1 );
+		tv_channel_name.setText( channel_name );
+		
+		ImageView iv_channel_icon = (ImageView) findViewById( R.id.iv_channel_icon1 );
+		int resID = context.getResources().getIdentifier( icon, "drawable",  context.getPackageName() );
+		iv_channel_icon.setBackgroundResource( resID );
+	}
+	
+	public String[] getFirstChannelNameAndImage(){
+		String sql = "SELECT * FROM channels WHERE id = 1";
+		Cursor 	 c = UtilSQLite.executeQuery( sqldb, sql, false );
+		if( c == null ){
+			Toast.makeText( context, "TV Channels have not yet synchronized !", Toast.LENGTH_LONG ).show();
+			return null;
+		}
+		if( c.getCount() == 0 ){
+			Toast.makeText( context, "Channel 1 does not exist !", Toast.LENGTH_LONG ).show();
+			return null;
+		} 
+		c.moveToNext();
+		return new String[]{ c.getString( c.getColumnIndex( "channel_name" ) ), c.getString( c.getColumnIndex( "icon" ) ) };
 	}
 }
