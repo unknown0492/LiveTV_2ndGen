@@ -16,12 +16,18 @@ public class Receiver extends BroadcastReceiver {
 	@Override
 	public void onReceive( Context context, Intent intent ) {
 		String action = intent.getAction();
+		Log.i( TAG, "action : "+action );
+
 		spfs = UtilSharedPreferences.createSharedPreference( context, "md5" );
-		
-		if( action.equals( "download_iptv_channels" ) ){
-			Log.i( TAG, "action : "+action );
-			
-			Intent in = new Intent( context, TVChannelDownloaderService.class );
+
+		if( action.equals( "connectivity_change" ) ){
+
+			//Intent in = new Intent( context, TVChannelDownloaderService.class );
+			//context.startService( in );
+
+		}
+		else if( action.equals( "download_iptv_channels" ) ){
+			//Intent in = new Intent( context, TVChannelDownloaderService.class );
 			//context.startService( in );
 			
 		}

@@ -15,7 +15,8 @@
         android:allowBackup="true"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true">
 
         <activity android:name=".SplashLoading">
             <intent-filter>
@@ -46,8 +47,7 @@
         <receiver android:name=".Receiver">
             <intent-filter>
                 <action android:name="download_iptv_channels" />
-                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
-                <action android:name="CONNECTIVITY_CHANGE" />
+                <action android:name="connectivity_change" />
             </intent-filter>
         </receiver>
 

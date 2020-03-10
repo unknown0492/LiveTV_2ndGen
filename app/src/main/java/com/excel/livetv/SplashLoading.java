@@ -1,20 +1,30 @@
 package com.excel.livetv;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.widget.Toast;
+
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.excel.configuration.ConfigurationReader;
 import com.excel.customitems.CustomItems;
 import com.excel.excelclasslibrary.UtilFile;
 import com.excel.excelclasslibrary.UtilNetwork;
 import com.excel.excelclasslibrary.UtilSQLite;
+import com.excel.excelclasslibrary.UtilSharedPreferences;
 import com.excel.excelclasslibrary.UtilShell;
 import com.excel.excelclasslibrary.UtilURL;
 
@@ -23,6 +33,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Vector;
 
 
 public class SplashLoading extends Activity {
@@ -33,11 +47,36 @@ public class SplashLoading extends Activity {
     ConfigurationReader configurationReader;
     String appstv_live_channels_key;
 
+    String[] permissions = {
+            // Manifest.permission.RECEIVE_BOOT_COMPLETED, // // Normal Permisison
+            Manifest.permission.ACCESS_NETWORK_STATE,
+            Manifest.permission.ACCESS_WIFI_STATE,
+            Manifest.permission.INTERNET,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            // Manifest.permission.WRITE_SETTINGS, // // Special Permisison -> https://developer.android.com/reference/android/Manifest.permission.html#WRITE_SETTINGS
+            "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
+    };
+
+    SharedPreferences spfs;
+    BroadcastReceiver receiver;
 
     @Override
     protected void onCreate( Bundle savedInstanceState ) {
         super.onCreate( savedInstanceState );
         setContentView( R.layout.activity_splash_loading );
+
+        registerAllBroadcasts();
+
+        spfs = (SharedPreferences) UtilSharedPreferences.createSharedPreference( this, Constants.PERMISSION_SPFS );
+
+        if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ) {
+            if ( checkPermissions() ) {
+                // permissions  granted.
+                UtilSharedPreferences.editSharedPreference( spfs, Constants.IS_PERMISSION_GRANTED, Constants.PERMISSION_GRANTED_YES );
+                //finish();
+            }
+        }
 
         configurationReader = ConfigurationReader.getInstance();
 
@@ -51,6 +90,29 @@ public class SplashLoading extends Activity {
         //getAccessKey();
         AsyncLiveTVData asyncLiveTVData = new AsyncLiveTVData();
         asyncLiveTVData.execute();
+    }
+
+    Vector<IntentFilter> intentFilterVector;
+
+    private void registerAllBroadcasts(){
+        receiver = new Receiver();
+        intentFilterVector = new Vector<IntentFilter>();
+        intentFilterVector.add( new IntentFilter( "connectivity_change" ) );
+        intentFilterVector.add( new IntentFilter( "download_iptv_channels" ) );
+
+
+        Iterator<IntentFilter> iterator = intentFilterVector.iterator();
+        while( iterator.hasNext() ){
+            registerReceiver( receiver, iterator.next() );
+        }
+
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver( receiver );
     }
 
     public void createTvChannelsDatabase(){
@@ -140,8 +202,6 @@ public class SplashLoading extends Activity {
 
                         UtilShell.executeShellCommandWithOp( "setprop is_iptv_channels_synced 1" );
 
-
-
                         /*Intent in = new Intent( context, Player.class );
                         startActivity( in );
                         //SplashLoading.this.overridePendingTransition( R.anim.show_tv_list_anim, R.anim.hide_tv_list_anim );
@@ -155,6 +215,7 @@ public class SplashLoading extends Activity {
                             @Override
                             public void run() {
                                 finish();
+
                             }
                         }, 3000 );
                     }
@@ -176,5 +237,44 @@ public class SplashLoading extends Activity {
             finish();
 
         }
+    }
+
+    @Override
+    public void onRequestPermissionsResult( int requestCode, String permissions[], int[] grantResults ) {
+        switch ( requestCode ) {
+            case 10:
+            {
+                if( grantResults.length > 0 && grantResults[ 0 ] == PackageManager.PERMISSION_GRANTED ){
+                    // permissions granted.
+                    Log.d( TAG, grantResults.length + " Permissions granted : " );
+                    UtilSharedPreferences.editSharedPreference( spfs, Constants.IS_PERMISSION_GRANTED, Constants.PERMISSION_GRANTED_YES );
+                } else {
+                    String permission = "";
+                    for ( String per : permissions ) {
+                        permission += "\n" + per;
+                    }
+                    // permissions list of don't granted permission
+                    Log.d( TAG, "Permissions not granted : "+permission );
+                    UtilSharedPreferences.editSharedPreference( spfs, Constants.IS_PERMISSION_GRANTED, Constants.PERMISSION_GRANTED_NO );
+                }
+                return;
+            }
+        }
+    }
+
+    public boolean checkPermissions() {
+        int result;
+        List<String> listPermissionsNeeded = new ArrayList<>();
+        for ( String p:permissions ) {
+            result = ContextCompat.checkSelfPermission( this, p );
+            if ( result != PackageManager.PERMISSION_GRANTED ) {
+                listPermissionsNeeded.add( p );
+            }
+        }
+        if ( !listPermissionsNeeded.isEmpty() ) {
+            ActivityCompat.requestPermissions( this, listPermissionsNeeded.toArray( new String[ listPermissionsNeeded.size() ] ), 10 );
+            return false;
+        }
+        return true;
     }
 }

@@ -3,8 +3,10 @@ package com.excel.livetv;
 import android.Manifest;
 import android.animation.ObjectAnimator;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.Instrumentation;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -14,6 +16,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -32,10 +35,13 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.excel.excelclasslibrary.UtilSQLite;
 import com.excel.excelclasslibrary.UtilSharedPreferences;
+import com.excel.excelclasslibrary.UtilShell;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Stack;
+import java.util.Vector;
 
 public class LiveTV extends Activity {
 
@@ -70,16 +76,7 @@ public class LiveTV extends Activity {
 
     boolean is_app_starting_from_beginning = true;
 
-    String[] permissions = {
-            // Manifest.permission.RECEIVE_BOOT_COMPLETED, // // Normal Permisison
-            Manifest.permission.ACCESS_NETWORK_STATE,
-            Manifest.permission.ACCESS_WIFI_STATE,
-            Manifest.permission.INTERNET,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            // Manifest.permission.WRITE_SETTINGS, // // Special Permisison -> https://developer.android.com/reference/android/Manifest.permission.html#WRITE_SETTINGS
-            "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION",
-    };
+
 
     @Override
     public void onCreate( Bundle icicle ) {
@@ -87,18 +84,6 @@ public class LiveTV extends Activity {
 
         Log.d( TAG, "onCreate()" );
 
-        spfs = (SharedPreferences) UtilSharedPreferences.createSharedPreference( this, Constants.PERMISSION_SPFS );
-
-		/*if ( Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ) {
-			if ( checkPermissions() ) {
-				// permissions  granted.
-				UtilSharedPreferences.editSharedPreference( spfs, Constants.IS_PERMISSION_GRANTED, Constants.PERMISSION_GRANTED_YES );
-				finish();
-			}
-		}
-		else{
-			finish();
-		}*/
 
 
         try{
@@ -118,6 +103,10 @@ public class LiveTV extends Activity {
 
         loadDatabase();
     }
+
+
+
+
 
     public void init(){
         //tv_ch_url = "";
@@ -151,13 +140,15 @@ public class LiveTV extends Activity {
 
         @Override
         public void onReceive( Context context, Intent intent ) {
+
             // Get extra data included in the Intent
             tv_ch_url = intent.getStringExtra( "url" );
             current_ch_number = intent.getStringExtra( "channel_number" );
 
             Log.d( TAG, "Got message : " + current_ch_number );
 
-            recreate();
+            playVideo();
+            // recreate();
         }
 
     };
@@ -169,6 +160,7 @@ public class LiveTV extends Activity {
         Log.d( TAG, "onSaveInstanceState" );
         outState.putInt( "recreate", 1 );
 
+        //finish();
     }
 
     //boolean is_first_time = true;
@@ -311,6 +303,7 @@ public class LiveTV extends Activity {
         }
 
         if( keyCode == KeyEvent.KEYCODE_BACK ){
+            finish();
             return true;
         }
 
@@ -424,15 +417,12 @@ public class LiveTV extends Activity {
 
         LocalBroadcastManager.getInstance( context ).sendBroadcast( intent );
 
-
         return true;
     }
 
     public void loadDatabase(){
 
         sqldb = UtilSQLite.makeDatabase( "tv_channels.db", context );
-
-
 
         app_prefs.setisFirstTimeRunning( "0" );
 
@@ -496,13 +486,16 @@ public class LiveTV extends Activity {
     }
 
     public void openTVList(){
+
         //Intent intent =new Intent( context, TvList.class );
-        Intent intent =new Intent( context, TvListSimple.class );
+        Intent intent = new Intent( context, TvListSimple.class );
         startActivity( intent );
-        this.overridePendingTransition( R.anim.show_tv_list_anim, R.anim.hide_tv_list_anim );
+        overridePendingTransition( R.anim.show_tv_list_anim, R.anim.hide_tv_list_anim );
+
     }
 
     public void createTvChannelsDatabase(){
+
         SQLiteDatabase sqldb = UtilSQLite.makeExternalDatabase( Environment.getExternalStorageDirectory().getAbsolutePath(), "tv_channels.db", context );
         String sql1 = "CREATE TABLE categories (sequence TEXT, id INTEGER PRIMARY KEY, category_name TEXT)";
         String sql2 = "CREATE TABLE channels (icon TEXT, category_id NUMERIC, id INTEGER PRIMARY KEY, sequence NUMERIC, channel_name TEXT, channel_url TEXT)";
@@ -510,6 +503,7 @@ public class LiveTV extends Activity {
         // UtilSQLite.executeQuery( sqldb, sql2, false );
         sqldb.rawQuery( sql1, null );
         sqldb.rawQuery( sql2, null );
+
     }
 
     public void showChannelInformation(){
@@ -554,19 +548,24 @@ public class LiveTV extends Activity {
 
     @Override
     protected void onPause() {
-
-        /*if (isApplicationSentToBackground(this)){
-            // Do what you want to do on detecting Home Key being Pressed
-            Log.d( TAG, "App has been sent to background, kill it" );
-            UtilShell.executeShellCommandWithOp( "am force-stop com.amlogic.DTVPlayer" );
-        }*/
-
         super.onPause();
         Log.d( TAG, "onPause()" );
 
+        sqldb.close();
+
+        if (isApplicationSentToBackground(this)){
+            // Do what you want to do on detecting Home Key being Pressed
+            Log.d( TAG, "App has been sent to background, kill it" );
+            //UtilShell.executeShellCommandWithOp( "am force-stop com.amlogic.DTVPlayer" );
+            UtilShell.executeShellCommandWithOp( "am force-stop com.excel.livetv" );
+            //finish();
+        }
+
+
+
     }
 
-   /* public boolean isApplicationSentToBackground(final Context context) {
+   public boolean isApplicationSentToBackground(final Context context) {
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         List<ActivityManager.RunningTaskInfo> tasks = am.getRunningTasks(1);
         if (!tasks.isEmpty()) {
@@ -576,7 +575,7 @@ public class LiveTV extends Activity {
             }
         }
         return false;
-    }*/
+    }
 
     @Override
     protected void onDestroy() {
@@ -590,6 +589,8 @@ public class LiveTV extends Activity {
         super.onResume();
 
         Log.i( TAG, "onResume()" );
+
+        loadDatabase();
 
         // Set as on tv list
         if( AppPreferences.isBackFromTVList() ){
@@ -616,44 +617,7 @@ public class LiveTV extends Activity {
 
 
 
-    @Override
-    public void onRequestPermissionsResult( int requestCode, String permissions[], int[] grantResults ) {
-        switch ( requestCode ) {
-            case 10:
-            {
-                if( grantResults.length > 0 && grantResults[ 0 ] == PackageManager.PERMISSION_GRANTED ){
-                    // permissions granted.
-                    Log.d( TAG, grantResults.length + " Permissions granted : " );
-                    UtilSharedPreferences.editSharedPreference( spfs, Constants.IS_PERMISSION_GRANTED, Constants.PERMISSION_GRANTED_YES );
-                } else {
-                    String permission = "";
-                    for ( String per : permissions ) {
-                        permission += "\n" + per;
-                    }
-                    // permissions list of don't granted permission
-                    Log.d( TAG, "Permissions not granted : "+permission );
-                    UtilSharedPreferences.editSharedPreference( spfs, Constants.IS_PERMISSION_GRANTED, Constants.PERMISSION_GRANTED_NO );
-                }
-                return;
-            }
-        }
-    }
 
-    public boolean checkPermissions() {
-        int result;
-        List<String> listPermissionsNeeded = new ArrayList<>();
-        for ( String p:permissions ) {
-            result = ContextCompat.checkSelfPermission( this, p );
-            if ( result != PackageManager.PERMISSION_GRANTED ) {
-                listPermissionsNeeded.add( p );
-            }
-        }
-        if ( !listPermissionsNeeded.isEmpty() ) {
-            ActivityCompat.requestPermissions( this, listPermissionsNeeded.toArray( new String[ listPermissionsNeeded.size() ] ), 10 );
-            return false;
-        }
-        return true;
-    }
 
 
     Stack<String> key_combination = new Stack<String>();

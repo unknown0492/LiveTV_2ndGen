@@ -194,7 +194,21 @@ public class TvListSimple extends Activity {
 			
 		});
 	}
-	
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+
+		LiveTV ltv = new LiveTV();
+
+		if ( ltv.isApplicationSentToBackground(this)){
+			// Do what you want to do on detecting Home Key being Pressed
+			Log.d( TAG, "App has been sent to background, kill it" );
+			UtilShell.executeShellCommandWithOp( "am force-stop com.excel.livetv" );
+			//finish();
+		}
+	}
+
 	private void initializeSQLite(){
 		sqldb = UtilSQLite.makeDatabase( "tv_channels.db", context );
 
